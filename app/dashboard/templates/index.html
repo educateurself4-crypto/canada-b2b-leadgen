@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Canada B2B Lead Dashboard</title>
+  <style>
+    body { font-family: -apple-system, Segoe UI, Arial, sans-serif; margin: 0; background: #f5f6f8; color: #1a1a1a; }
+    header { background: #101828; color: white; padding: 16px 24px; }
+    header h1 { margin: 0; font-size: 18px; }
+    .stats { display: flex; gap: 16px; padding: 16px 24px; flex-wrap: wrap; }
+    .stat { background: white; border-radius: 8px; padding: 12px 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+    .stat .n { font-size: 22px; font-weight: 700; }
+    .stat .l { font-size: 12px; color: #667085; }
+    form.filters { background: white; margin: 0 24px 16px; padding: 16px; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+    form.filters label { font-size: 11px; color: #667085; display: block; margin-bottom: 2px; }
+    form.filters input[type=text], form.filters select { padding: 6px 8px; border: 1px solid #d0d5dd; border-radius: 6px; }
+    form.filters .checks { display: flex; gap: 12px; align-items: center; }
+    form.filters button { background: #101828; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+    table { width: calc(100% - 48px); margin: 0 24px 24px; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+    th, td { text-align: left; padding: 8px 10px; font-size: 13px; border-bottom: 1px solid #eaecf0; }
+    th { background: #f9fafb; color: #667085; font-weight: 600; }
+    th a { color: #667085; text-decoration: none; display: flex; align-items: center; gap: 4px; }
+    th a:hover { color: #101828; }
+    .badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+    .badge.ready { background: #d1fadf; color: #027a48; }
+    .badge.notready { background: #fef0c7; color: #b54708; }
+    .score { font-weight: 700; }
+    .jobs { margin: 0 24px 24px; font-size: 12px; color: #667085; }
+    .export-link { display: inline-block; margin-left: 8px; }
+    .layout { display: flex; gap: 24px; margin: 0 24px 24px; align-items: flex-start; }
+    .main-content { flex: 1; min-width: 0; background: white; border-radius: 8px; overflow: auto; padding-bottom: 8px; }
+    .main-content table { margin: 0; width: 100%; border-radius: 0; }
+    .sidebar { width: 300px; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); flex-shrink: 0; }
+    .sidebar h2 { margin-top: 0; font-size: 16px; border-bottom: 1px solid #eaecf0; padding-bottom: 8px; margin-bottom: 12px; }
+    .digest-item { padding: 8px 0; border-bottom: 1px solid #eaecf0; font-size: 13px; }
+    .digest-item:last-child { border-bottom: none; }
+    .digest-name { font-weight: 600; color: #101828; }
+    .digest-meta { color: #667085; font-size: 11px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <header><h1>Canada B2B Lead Dashboard</h1></header>
+
+  <div class="stats">
+    <div class="stat"><div class="n">{{ total }}</div><div class="l">Sales-eligible businesses</div></div>
+    <div class="stat"><div class="n">{{ new_counts.get('new_today', 0) }}</div><div class="l">New today</div></div>
+    <div class="stat"><div class="n">{{ new_counts.get('new_7d', 0) }}</div><div class="l">New (7 days)</div></div>
+    <div class="stat"><div class="n">{{ new_counts.get('new_30d', 0) }}</div><div class="l">New (30 days)</div></div>
+    <div class="stat"><div class="n">{{ new_counts.get('recently_changed', 0) }}</div><div class="l">Recently changed</div></div>
+  </div>
+
+  <form class="filters" method="get">
+    <div><label>Search name</label><input type="text" name="search" value="{{ filters.get('search','') }}" placeholder="Company name"></div>
+    <div><label>Province</label><input type="text" name="province" value="{{ filters.get('province','') }}" placeholder="ON"></div>
+    <div><label>City</label><input type="text" name="city" value="{{ filters.get('city','') }}"></div>
+    <div><label>Industry</label><input type="text" name="industry" value="{{ filters.get('industry','') }}"></div>
+    <div><label>Employee size</label>
+      <select name="size_category">
+        <option value="">Any</option>
+        {% for s in ['1-4','5-9','10-19','20-49','50-99','100-199','200-499','500-999','1000+'] %}
+        <option value="{{ s }}" {% if filters.get('size_category')==s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div><label>Min quality score</label><input type="text" name="min_quality_score" value="{{ filters.get('min_quality_score','') }}" style="width:60px"></div>
+    <div class="checks">
+      <label><input type="checkbox" name="phone_available" {% if filters.get('phone_available') %}checked{% endif %}> Phone</label>
+      <label><input type="checkbox" name="email_available" {% if filters.get('email_available') %}checked{% endif %}> Email</label>
+      <label><input type="checkbox" name="new_only" {% if filters.get('new_only') %}checked{% endif %}> New only</label>
+      <label><input type="checkbox" name="decision_maker_available" {% if filters.get('decision_maker_available') %}checked{% endif %}> Decision-maker</label>
+    </div>
+    <button type="submit">Filter</button>
+    <a class="export-link" href="{{ url_for('export_csv', **filters) }}">Export CSV ⬇</a>
+  </form>
+
+  <div class="layout">
+    <div class="main-content">
+      <table>
+        <thead>
+          {% macro sort_icon(col) %}
+            {% if sort_by == col %}
+              <span style="font-size: 10px;">{% if sort_order == 'ASC' %}▲{% else %}▼{% endif %}</span>
+            {% endif %}
+          {% endmacro %}
+          <tr>
+            <th><a href="{{ build_sort_url('legal_name') }}">Legal name {{ sort_icon('legal_name') }}</a></th>
+            <th><a href="{{ build_sort_url('operating_name') }}">Operating name {{ sort_icon('operating_name') }}</a></th>
+            <th><a href="{{ build_sort_url('province') }}">Province {{ sort_icon('province') }}</a></th>
+            <th><a href="{{ build_sort_url('city') }}">City {{ sort_icon('city') }}</a></th>
+            <th><a href="{{ build_sort_url('phone') }}">Phone {{ sort_icon('phone') }}</a></th>
+            <th><a href="{{ build_sort_url('email') }}">Email {{ sort_icon('email') }}</a></th>
+            <th><a href="{{ build_sort_url('industry') }}">Industry {{ sort_icon('industry') }}</a></th>
+            <th><a href="{{ build_sort_url('size_category') }}">Size {{ sort_icon('size_category') }}</a></th>
+            <th><a href="{{ build_sort_url('business_status') }}">Status {{ sort_icon('business_status') }}</a></th>
+            <th><a href="{{ build_sort_url('quality_score') }}">Score {{ sort_icon('quality_score') }}</a></th>
+            <th><a href="{{ build_sort_url('first_seen_at') }}">First seen {{ sort_icon('first_seen_at') }}</a></th>
+            <th><a href="{{ build_sort_url('incorporation_date') }}">Registered {{ sort_icon('incorporation_date') }}</a></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in businesses %}
+          <tr>
+            <td>{{ b.legal_name or '—' }}</td>
+            <td>{{ b.operating_name or '—' }}</td>
+            <td>{{ b.province or '—' }}</td>
+            <td>{{ b.city or '—' }}</td>
+            <td>{{ b.phone or '—' }}</td>
+            <td>{{ b.email or '—' }}</td>
+            <td>{{ b.industry or '—' }}</td>
+            <td>{{ b.size_category or '—' }}</td>
+            <td>{{ b.business_status }}</td>
+            <td class="score">
+              {{ b.quality_score|round(0) }}
+              {% if b.lead_ready %}<span class="badge ready">ready</span>{% else %}<span class="badge notready">low</span>{% endif %}
+            </td>
+            <td>{{ b.first_seen_at.strftime('%Y-%m-%d') if b.first_seen_at else '—' }}</td>
+            <td>{{ b.incorporation_date.strftime('%Y-%m-%d') if b.incorporation_date else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sidebar">
+      <h2>Daily Leads Digest 🚀</h2>
+      {% if daily_digest %}
+        {% for d in daily_digest %}
+        <div class="digest-item">
+          <div class="digest-name">{{ d.legal_name or d.operating_name }}</div>
+          <div class="digest-meta">
+            {{ d.city or 'Unknown' }}, {{ d.province or 'Unknown' }} • Score: {{ d.quality_score|round(0) }}
+            {% if d.phone %}<br>📞 {{ d.phone }}{% endif %}
+            {% if d.industry %}<br>🏢 {{ d.industry }}{% endif %}
+            {% if d.incorporation_date %}<br>📅 Registered: {{ d.incorporation_date.strftime('%Y-%m-%d') }}{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="digest-meta">No new leads today yet.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="jobs">
+    <strong>Recent pipeline runs:</strong>
+    <ul>
+      {% for j in recent_jobs %}
+      <li>{{ j.source_name }} — {{ j.status }} — collected {{ j.records_collected }}, new {{ j.records_new }}, updated {{ j.records_updated }}, errors {{ j.errors_count }} ({{ j.started_at }})</li>
+      {% endfor %}
+    </ul>
+  </div>
+</body>
+</html>

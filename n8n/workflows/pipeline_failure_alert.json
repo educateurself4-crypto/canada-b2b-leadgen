@@ -1,0 +1,110 @@
+{
+  "id": "wf_pipeline_alert",
+  "name": "Pipeline Failure Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "minutes", "minutesInterval": 15 }
+          ]
+        }
+      },
+      "id": "trigger",
+      "name": "Every 15 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://dashboard:8080/api/jobs/recent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "status", "value": "failed" },
+            { "name": "since", "value": "={{$now.minus({ minutes: 15 }).toISO()}}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-Key", "value": "my_secure_automation_key_123" }
+          ]
+        },
+        "options": {
+          "response": { "response": { "fullResponse": false } }
+        }
+      },
+      "id": "fetch_failed_jobs",
+      "name": "Fetch failed jobs (last 15 min)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "has_failures",
+              "leftValue": "={{$json.length}}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has_failures_if",
+      "name": "Any failures?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "message",
+              "name": "message",
+              "type": "string",
+              "value": "=:rotating_light: *Lead-gen pipeline failure(s)*\n{{$json.map(j => `• ${j.source_name} (${j.job_type}) — ${j.errors_count} error(s) at ${j.started_at}: ${j.error_detail || 'see logs'}`).join('\\n')}}"
+            }
+          ]
+        }
+      },
+      "id": "format_message",
+      "name": "Format alert message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "REPLACE_WITH_YOUR_SLACK_OR_TEAMS_INCOMING_WEBHOOK_URL",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"text\": $json.message } }}"
+      },
+      "id": "send_alert",
+      "name": "Send alert (Slack/Teams webhook)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 220]
+    }
+  ],
+  "connections": {
+    "Every 15 minutes": { "main": [[{ "node": "Fetch failed jobs (last 15 min)", "type": "main", "index": 0 }]] },
+    "Fetch failed jobs (last 15 min)": { "main": [[{ "node": "Any failures?", "type": "main", "index": 0 }]] },
+    "Any failures?": { "main": [[{ "node": "Format alert message", "type": "main", "index": 0 }], []] },
+    "Format alert message": { "main": [[{ "node": "Send alert (Slack/Teams webhook)", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

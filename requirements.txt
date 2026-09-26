@@ -1,0 +1,11 @@
+psycopg[binary]==3.2.1
+python-dotenv==1.0.1
+requests==2.32.3
+lxml==5.2.2
+tldextract==5.1.2
+phonenumbers==8.13.40
+rapidfuzz==3.9.6
+APScheduler==3.10.4
+Flask==3.0.3
+pandas==2.2.2
+tenacity==8.4.2

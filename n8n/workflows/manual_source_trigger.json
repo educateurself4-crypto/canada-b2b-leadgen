@@ -1,0 +1,58 @@
+{
+  "id": "wf_manual_trigger",
+  "name": "Manual Source Trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "trigger-source",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook (e.g. Slack slash command)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "trigger-source"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://dashboard:8080/api/trigger/{{$json.body.source_name}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-API-Key", "value": "my_secure_automation_key_123" }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "trigger_source",
+      "name": "Trigger connector run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}"
+      },
+      "id": "respond",
+      "name": "Respond to caller",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook (e.g. Slack slash command)": { "main": [[{ "node": "Trigger connector run", "type": "main", "index": 0 }]] },
+    "Trigger connector run": { "main": [[{ "node": "Respond to caller", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "notes": "POST { \"source_name\": \"toronto_business_licences\" } (or any key from SOURCE_REGISTRY, or 'corporations_canada_federal') to this webhook's production URL to run that connector on demand — useful wired to a Slack slash command, a button in an internal tool, or an n8n form trigger for non-technical staff."
+}
