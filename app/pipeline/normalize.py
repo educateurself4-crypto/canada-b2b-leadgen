@@ -52,11 +52,23 @@ def normalize_domain(website: str) -> str:
     return ".".join(part for part in [ext.domain, ext.suffix] if part).lower()
 
 
-def normalize_name(value: str) -> str:
+def clean_string(value: str) -> str:
     if not value:
         return None
-    v = re.sub(r"\s+", " ", value.strip())
+    v = value.strip()
+    if not v:
+        return None
+    # Check for variants of N/A or empty values
+    v_lower = v.lower()
+    if v_lower in ("n/a", "na", "n / a", "none", "null", "nil", "-", "--"):
+        return None
     return v
+
+def normalize_name(value: str) -> str:
+    v = clean_string(value)
+    if not v:
+        return None
+    return re.sub(r"\s+", " ", v)
 
 
 def normalize_record(raw: RawBusinessRecord) -> dict:
@@ -69,14 +81,14 @@ def normalize_record(raw: RawBusinessRecord) -> dict:
         "city": normalize_name(raw.city),
         "address_line1": normalize_name(raw.address_line1),
         "postal_code": normalize_postal_code(raw.postal_code),
-        "website": raw.website.strip().lower() if raw.website else None,
+        "website": clean_string(raw.website.lower()) if raw.website else None,
         "domain": normalize_domain(raw.website),
         "phone": normalize_phone(raw.phone),
-        "email": raw.email.strip().lower() if raw.email else None,
+        "email": clean_string(raw.email.lower()) if raw.email else None,
         "industry": normalize_name(raw.industry),
-        "naics_code": raw.naics_code.strip() if raw.naics_code else None,
-        "corporation_number": raw.corporation_number.strip() if raw.corporation_number else None,
-        "business_number": raw.business_number.strip() if raw.business_number else None,
+        "naics_code": clean_string(raw.naics_code) if raw.naics_code else None,
+        "corporation_number": clean_string(raw.corporation_number) if raw.corporation_number else None,
+        "business_number": clean_string(raw.business_number) if raw.business_number else None,
         "incorporation_date": raw.incorporation_date,
         "business_status": (raw.business_status or "unknown").lower(),
         "employee_count_min": raw.employee_count_min,

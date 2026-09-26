@@ -2,152 +2,535 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Canada B2B Lead Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Canada B2B Lead Dashboard — Telecom Sales</title>
+  <meta name="description" content="Internal dashboard for searching, filtering, and exporting Canadian business leads for telecom B2B sales.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: -apple-system, Segoe UI, Arial, sans-serif; margin: 0; background: #f5f6f8; color: #1a1a1a; }
-    header { background: #101828; color: white; padding: 16px 24px; }
-    header h1 { margin: 0; font-size: 18px; }
-    .stats { display: flex; gap: 16px; padding: 16px 24px; flex-wrap: wrap; }
-    .stat { background: white; border-radius: 8px; padding: 12px 18px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
-    .stat .n { font-size: 22px; font-weight: 700; }
-    .stat .l { font-size: 12px; color: #667085; }
-    form.filters { background: white; margin: 0 24px 16px; padding: 16px; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
-    form.filters label { font-size: 11px; color: #667085; display: block; margin-bottom: 2px; }
-    form.filters input[type=text], form.filters select { padding: 6px 8px; border: 1px solid #d0d5dd; border-radius: 6px; }
-    form.filters .checks { display: flex; gap: 12px; align-items: center; }
-    form.filters button { background: #101828; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; }
-    table { width: calc(100% - 48px); margin: 0 24px 24px; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
-    th, td { text-align: left; padding: 8px 10px; font-size: 13px; border-bottom: 1px solid #eaecf0; }
-    th { background: #f9fafb; color: #667085; font-weight: 600; }
-    th a { color: #667085; text-decoration: none; display: flex; align-items: center; gap: 4px; }
-    th a:hover { color: #101828; }
-    .badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; }
-    .badge.ready { background: #d1fadf; color: #027a48; }
-    .badge.notready { background: #fef0c7; color: #b54708; }
-    .score { font-weight: 700; }
-    .jobs { margin: 0 24px 24px; font-size: 12px; color: #667085; }
-    .export-link { display: inline-block; margin-left: 8px; }
-    .layout { display: flex; gap: 24px; margin: 0 24px 24px; align-items: flex-start; }
-    .main-content { flex: 1; min-width: 0; background: white; border-radius: 8px; overflow: auto; padding-bottom: 8px; }
-    .main-content table { margin: 0; width: 100%; border-radius: 0; }
-    .sidebar { width: 300px; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); flex-shrink: 0; }
-    .sidebar h2 { margin-top: 0; font-size: 16px; border-bottom: 1px solid #eaecf0; padding-bottom: 8px; margin-bottom: 12px; }
-    .digest-item { padding: 8px 0; border-bottom: 1px solid #eaecf0; font-size: 13px; }
+    :root {
+      --bg-dark: #0f1117;
+      --bg-card: #1a1d27;
+      --bg-card-hover: #222533;
+      --bg-input: #252836;
+      --border: #2d3044;
+      --border-focus: #6366f1;
+      --text-primary: #f1f3f9;
+      --text-secondary: #8b8fa3;
+      --text-muted: #5c6078;
+      --accent-indigo: #6366f1;
+      --accent-indigo-light: #818cf8;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-sky: #0ea5e9;
+      --gradient-brand: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+      --gradient-card: linear-gradient(145deg, #1e2130 0%, #1a1d27 100%);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
+      --shadow-md: 0 4px 12px rgba(0,0,0,.3);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,.4);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, system-ui, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ── Header ─────────────────── */
+    header {
+      background: linear-gradient(180deg, rgba(99,102,241,.15) 0%, transparent 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(12px);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo-area { display: flex; align-items: center; gap: 12px; }
+    .logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--gradient-brand);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: white; font-weight: 700;
+    }
+    header h1 { font-size: 17px; font-weight: 700; letter-spacing: -.3px; }
+    header h1 span { color: var(--accent-indigo-light); }
+    .header-right { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-secondary); }
+    .header-badge {
+      background: rgba(16,185,129,.15); color: var(--accent-emerald);
+      padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+
+    /* ── Stats Row ──────────────── */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px; padding: 20px 28px;
+    }
+    .stat-card {
+      background: var(--gradient-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .stat-value { font-size: 28px; font-weight: 700; line-height: 1.1; }
+    .stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+    .stat-card.indigo .stat-value { color: var(--accent-indigo-light); }
+    .stat-card.emerald .stat-value { color: var(--accent-emerald); }
+    .stat-card.amber .stat-value { color: var(--accent-amber); }
+    .stat-card.sky .stat-value { color: var(--accent-sky); }
+    .stat-card.rose .stat-value { color: var(--accent-rose); }
+
+    /* ── Filters ────────────────── */
+    .filters-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin: 0 28px 18px;
+      padding: 18px;
+    }
+    .filters-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .filters-header h2 { font-size: 14px; font-weight: 600; }
+    .filters-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 12px; align-items: end;
+    }
+    .filter-group label {
+      display: block; font-size: 11px; color: var(--text-secondary);
+      margin-bottom: 4px; text-transform: uppercase; letter-spacing: .3px;
+    }
+    .filter-group input, .filter-group select {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); background: var(--bg-input);
+      color: var(--text-primary); font-size: 13px; font-family: inherit;
+      transition: border-color .15s;
+    }
+    .filter-group input:focus, .filter-group select:focus {
+      outline: none; border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+    }
+    .checks-row {
+      display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+      grid-column: 1 / -1; padding-top: 4px;
+    }
+    .checks-row label {
+      font-size: 12px; color: var(--text-secondary);
+      display: flex; align-items: center; gap: 5px; cursor: pointer;
+    }
+    .checks-row input[type=checkbox] {
+      accent-color: var(--accent-indigo);
+      width: 15px; height: 15px;
+    }
+    .filter-actions {
+      display: flex; gap: 10px; grid-column: 1 / -1; padding-top: 6px;
+    }
+    .btn {
+      padding: 9px 18px; border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: all .15s; border: none;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-primary {
+      background: var(--gradient-brand); color: white;
+    }
+    .btn-primary:hover { opacity: .9; transform: translateY(-1px); }
+    .btn-outline {
+      background: transparent; color: var(--accent-indigo-light);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover { background: rgba(99,102,241,.1); }
+
+    /* ── Main Layout ────────────── */
+    .main-layout {
+      display: grid; grid-template-columns: 1fr 320px;
+      gap: 18px; padding: 0 28px 28px; align-items: start;
+    }
+    @media (max-width: 1100px) {
+      .main-layout { grid-template-columns: 1fr; }
+    }
+
+    /* ── Table ──────────────────── */
+    .table-wrapper {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .table-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px; border-bottom: 1px solid var(--border);
+    }
+    .table-header h2 { font-size: 14px; font-weight: 600; }
+    .table-count { font-size: 12px; color: var(--text-secondary); }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    th {
+      background: rgba(99,102,241,.05);
+      padding: 10px 12px; font-size: 11px; color: var(--text-secondary);
+      font-weight: 600; text-transform: uppercase; letter-spacing: .4px;
+      text-align: left; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0;
+    }
+    th a {
+      color: inherit; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 3px;
+    }
+    th a:hover { color: var(--text-primary); }
+    td {
+      padding: 10px 12px; font-size: 13px;
+      border-bottom: 1px solid rgba(45,48,68,.5);
+      max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+    }
+    tr:hover td { background: var(--bg-card-hover); }
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge-ready { background: rgba(16,185,129,.15); color: var(--accent-emerald); }
+    .badge-low { background: rgba(245,158,11,.12); color: var(--accent-amber); }
+    .badge-active { background: rgba(16,185,129,.12); color: var(--accent-emerald); }
+    .badge-inactive { background: rgba(244,63,94,.12); color: var(--accent-rose); }
+    .badge-dissolved { background: rgba(139,143,163,.12); color: var(--text-secondary); }
+    .score-cell { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .dnc-btn {
+      background: rgba(244,63,94,.1); color: var(--accent-rose);
+      border: 1px solid rgba(244,63,94,.2); border-radius: 6px;
+      padding: 3px 8px; font-size: 10px; cursor: pointer;
+      font-family: inherit; font-weight: 600;
+    }
+    .dnc-btn:hover { background: rgba(244,63,94,.2); }
+
+    /* ── Sidebar ────────────────── */
+    .sidebar {
+      display: flex; flex-direction: column; gap: 18px;
+    }
+    .sidebar-card {
+      background: var(--gradient-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+    .sidebar-card h2 {
+      font-size: 14px; font-weight: 600; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .digest-item {
+      padding: 10px 0; border-bottom: 1px solid rgba(45,48,68,.5);
+    }
     .digest-item:last-child { border-bottom: none; }
-    .digest-name { font-weight: 600; color: #101828; }
-    .digest-meta { color: #667085; font-size: 11px; margin-top: 4px; }
+    .digest-name { font-weight: 600; font-size: 13px; color: var(--text-primary); }
+    .digest-meta { font-size: 11px; color: var(--text-secondary); margin-top: 3px; line-height: 1.6; }
+    .digest-badge {
+      display: inline-block; padding: 2px 7px; border-radius: 4px;
+      font-size: 10px; font-weight: 600;
+      background: rgba(99,102,241,.15); color: var(--accent-indigo-light);
+    }
+
+    /* ── Pipeline Jobs ──────────── */
+    .jobs-grid { display: flex; flex-direction: column; gap: 8px; }
+    .job-row {
+      display: grid; grid-template-columns: 1fr auto auto;
+      gap: 8px; align-items: center;
+      padding: 8px 10px; border-radius: var(--radius-sm);
+      background: rgba(99,102,241,.03);
+      border: 1px solid rgba(45,48,68,.3);
+      font-size: 12px;
+    }
+    .job-source { font-weight: 600; }
+    .job-status {
+      padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;
+    }
+    .job-status.success { background: rgba(16,185,129,.15); color: var(--accent-emerald); }
+    .job-status.partial_failure { background: rgba(245,158,11,.15); color: var(--accent-amber); }
+    .job-status.failed { background: rgba(244,63,94,.15); color: var(--accent-rose); }
+    .job-status.running { background: rgba(14,165,233,.15); color: var(--accent-sky); }
+    .job-stats { font-size: 11px; color: var(--text-secondary); }
+
+    /* ── Empty state ────────────── */
+    .empty-state {
+      padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;
+    }
+
+    /* ── Do-not-call modal ──────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.6); z-index: 200;
+      justify-content: center; align-items: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px; width: 420px;
+      box-shadow: var(--shadow-lg);
+    }
+    .modal h3 { margin-bottom: 12px; font-size: 16px; }
+    .modal input, .modal textarea {
+      width: 100%; margin: 6px 0; padding: 8px 10px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--bg-input); color: var(--text-primary);
+      font-family: inherit; font-size: 13px;
+    }
+    .modal-actions { display: flex; gap: 10px; margin-top: 14px; justify-content: flex-end; }
+
+    /* ── Animations ──────────────── */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .stat-card, .table-wrapper, .sidebar-card { animation: fadeIn .35s ease-out; }
   </style>
 </head>
 <body>
-  <header><h1>Canada B2B Lead Dashboard</h1></header>
 
-  <div class="stats">
-    <div class="stat"><div class="n">{{ total }}</div><div class="l">Sales-eligible businesses</div></div>
-    <div class="stat"><div class="n">{{ new_counts.get('new_today', 0) }}</div><div class="l">New today</div></div>
-    <div class="stat"><div class="n">{{ new_counts.get('new_7d', 0) }}</div><div class="l">New (7 days)</div></div>
-    <div class="stat"><div class="n">{{ new_counts.get('new_30d', 0) }}</div><div class="l">New (30 days)</div></div>
-    <div class="stat"><div class="n">{{ new_counts.get('recently_changed', 0) }}</div><div class="l">Recently changed</div></div>
+<header>
+  <div class="logo-area">
+    <div class="logo-icon">B2B</div>
+    <h1>Canada <span>B2B</span> Lead Dashboard</h1>
   </div>
+  <div class="header-right">
+    <span class="header-badge">● System Active</span>
+    <span>Telecom Sales</span>
+  </div>
+</header>
 
-  <form class="filters" method="get">
-    <div><label>Search name</label><input type="text" name="search" value="{{ filters.get('search','') }}" placeholder="Company name"></div>
-    <div><label>Province</label><input type="text" name="province" value="{{ filters.get('province','') }}" placeholder="ON"></div>
-    <div><label>City</label><input type="text" name="city" value="{{ filters.get('city','') }}"></div>
-    <div><label>Industry</label><input type="text" name="industry" value="{{ filters.get('industry','') }}"></div>
-    <div><label>Employee size</label>
-      <select name="size_category">
-        <option value="">Any</option>
-        {% for s in ['1-4','5-9','10-19','20-49','50-99','100-199','200-499','500-999','1000+'] %}
-        <option value="{{ s }}" {% if filters.get('size_category')==s %}selected{% endif %}>{{ s }}</option>
+<!-- ── Stats ── -->
+<div class="stats-row">
+  <div class="stat-card indigo">
+    <div class="stat-value">{{ total }}</div>
+    <div class="stat-label">Total Businesses</div>
+  </div>
+  <div class="stat-card emerald">
+    <div class="stat-value">{{ new_counts.get('new_today', 0) }}</div>
+    <div class="stat-label">New Today</div>
+  </div>
+  <div class="stat-card sky">
+    <div class="stat-value">{{ new_counts.get('new_7d', 0) }}</div>
+    <div class="stat-label">New (7 days)</div>
+  </div>
+  <div class="stat-card amber">
+    <div class="stat-value">{{ new_counts.get('new_30d', 0) }}</div>
+    <div class="stat-label">New (30 days)</div>
+  </div>
+  <div class="stat-card rose">
+    <div class="stat-value">{{ new_counts.get('recently_changed', 0) }}</div>
+    <div class="stat-label">Recently Changed</div>
+  </div>
+</div>
+
+<!-- ── Filters ── -->
+<form class="filters-panel" method="get" id="filterForm">
+  <div class="filters-header">
+    <h2>🔍 Search & Filter</h2>
+    <a href="/" style="font-size:12px;color:var(--accent-indigo-light);text-decoration:none;">Clear all</a>
+  </div>
+  <div class="filters-grid">
+    <div class="filter-group">
+      <label>Business name</label>
+      <input type="text" name="search" value="{{ filters.get('search','') }}" placeholder="Search company...">
+    </div>
+    <div class="filter-group">
+      <label>Province</label>
+      <select name="province">
+        <option value="">ALL</option>
+        {% for code, name in [('AB','Alberta'),('BC','British Columbia'),('MB','Manitoba'),('NB','New Brunswick'),('NL','Newfoundland'),('NS','Nova Scotia'),('NT','Northwest Territories'),('NU','Nunavut'),('ON','Ontario'),('PE','Prince Edward Island'),('QC','Quebec'),('SK','Saskatchewan'),('YT','Yukon')] %}
+        <option value="{{ code }}" {% if filters.get('province')==code %}selected{% endif %}>{{ code }} — {{ name }}</option>
         {% endfor %}
       </select>
     </div>
-    <div><label>Min quality score</label><input type="text" name="min_quality_score" value="{{ filters.get('min_quality_score','') }}" style="width:60px"></div>
-    <div class="checks">
-      <label><input type="checkbox" name="phone_available" {% if filters.get('phone_available') %}checked{% endif %}> Phone</label>
-      <label><input type="checkbox" name="email_available" {% if filters.get('email_available') %}checked{% endif %}> Email</label>
-      <label><input type="checkbox" name="new_only" {% if filters.get('new_only') %}checked{% endif %}> New only</label>
-      <label><input type="checkbox" name="decision_maker_available" {% if filters.get('decision_maker_available') %}checked{% endif %}> Decision-maker</label>
+    <div class="filter-group">
+      <label>City</label>
+      <input type="text" name="city" value="{{ filters.get('city','') }}" placeholder="City name...">
     </div>
-    <button type="submit">Filter</button>
-    <a class="export-link" href="{{ url_for('export_csv', **filters) }}">Export CSV ⬇</a>
-  </form>
+    <div class="filter-group">
+      <label>Industry</label>
+      <input type="text" name="industry" value="{{ filters.get('industry','') }}" placeholder="Industry...">
+    </div>
+    <div class="filter-group">
+      <label>Employee Size</label>
+      <select name="size_category">
+        <option value="">Any size</option>
+        {% for s in ['1-4','5-9','10-19','20-49','50-99','100-199','200-499','500-999','1000+'] %}
+        <option value="{{ s }}" {% if filters.get('size_category')==s %}selected{% endif %}>{{ s }} employees</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Min Quality Score</label>
+      <input type="number" name="min_quality_score" value="{{ filters.get('min_quality_score','') }}" placeholder="0-100" min="0" max="100">
+    </div>
+    <div class="checks-row">
+      <label><input type="checkbox" name="phone_available" {% if filters.get('phone_available') %}checked{% endif %}> 📞 Has Phone</label>
+      <label><input type="checkbox" name="email_available" {% if filters.get('email_available') %}checked{% endif %}> 📧 Has Email</label>
+      <label><input type="checkbox" name="new_only" {% if filters.get('new_only') %}checked{% endif %}> 🆕 New Only</label>
+      <label><input type="checkbox" name="decision_maker_available" {% if filters.get('decision_maker_available') %}checked{% endif %}> 👤 Decision-maker</label>
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">⚡ Apply Filters</button>
+      <a href="{{ url_for('export_csv', **filters) }}" class="btn btn-outline">📥 Export CSV</a>
+    </div>
+  </div>
+</form>
 
-  <div class="layout">
-    <div class="main-content">
+<!-- ── Main Content ── -->
+<div class="main-layout">
+  <!-- Table -->
+  <div class="table-wrapper">
+    <div class="table-header">
+      <h2>Business Records</h2>
+      <span class="table-count">Showing {{ businesses|length }} of {{ total }} results</span>
+    </div>
+    <div class="table-scroll">
       <table>
         <thead>
           {% macro sort_icon(col) %}
             {% if sort_by == col %}
-              <span style="font-size: 10px;">{% if sort_order == 'ASC' %}▲{% else %}▼{% endif %}</span>
+              <span style="font-size:10px;opacity:.7;">{% if sort_order == 'ASC' %}▲{% else %}▼{% endif %}</span>
             {% endif %}
           {% endmacro %}
           <tr>
-            <th><a href="{{ build_sort_url('legal_name') }}">Legal name {{ sort_icon('legal_name') }}</a></th>
-            <th><a href="{{ build_sort_url('operating_name') }}">Operating name {{ sort_icon('operating_name') }}</a></th>
-            <th><a href="{{ build_sort_url('province') }}">Province {{ sort_icon('province') }}</a></th>
+            <th><a href="{{ build_sort_url('legal_name') }}">Legal Name {{ sort_icon('legal_name') }}</a></th>
+            <th><a href="{{ build_sort_url('province') }}">Prov {{ sort_icon('province') }}</a></th>
             <th><a href="{{ build_sort_url('city') }}">City {{ sort_icon('city') }}</a></th>
             <th><a href="{{ build_sort_url('phone') }}">Phone {{ sort_icon('phone') }}</a></th>
-            <th><a href="{{ build_sort_url('email') }}">Email {{ sort_icon('email') }}</a></th>
             <th><a href="{{ build_sort_url('industry') }}">Industry {{ sort_icon('industry') }}</a></th>
             <th><a href="{{ build_sort_url('size_category') }}">Size {{ sort_icon('size_category') }}</a></th>
             <th><a href="{{ build_sort_url('business_status') }}">Status {{ sort_icon('business_status') }}</a></th>
             <th><a href="{{ build_sort_url('quality_score') }}">Score {{ sort_icon('quality_score') }}</a></th>
-            <th><a href="{{ build_sort_url('first_seen_at') }}">First seen {{ sort_icon('first_seen_at') }}</a></th>
-            <th><a href="{{ build_sort_url('incorporation_date') }}">Registered {{ sort_icon('incorporation_date') }}</a></th>
+            <th><a href="{{ build_sort_url('first_seen_at') }}">First Seen {{ sort_icon('first_seen_at') }}</a></th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for b in businesses %}
           <tr>
-            <td>{{ b.legal_name or '—' }}</td>
-            <td>{{ b.operating_name or '—' }}</td>
+            <td title="{{ b.operating_name or '' }}">
+              <strong>{{ b.legal_name or b.operating_name or '—' }}</strong>
+              {% if b.operating_name and b.operating_name != b.legal_name %}
+              <br><span style="font-size:11px;color:var(--text-secondary);">DBA: {{ b.operating_name }}</span>
+              {% endif %}
+            </td>
             <td>{{ b.province or '—' }}</td>
             <td>{{ b.city or '—' }}</td>
             <td>{{ b.phone or '—' }}</td>
-            <td>{{ b.email or '—' }}</td>
-            <td>{{ b.industry or '—' }}</td>
-            <td>{{ b.size_category or '—' }}</td>
-            <td>{{ b.business_status }}</td>
-            <td class="score">
-              {{ b.quality_score|round(0) }}
-              {% if b.lead_ready %}<span class="badge ready">ready</span>{% else %}<span class="badge notready">low</span>{% endif %}
+            <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;" title="{{ b.industry or '' }}">{{ b.industry or '—' }}</td>
+            <td>{% if b.size_category %}<span class="digest-badge">{{ b.size_category }}</span>{% else %}—{% endif %}</td>
+            <td>
+              {% if b.business_status == 'active' %}<span class="badge badge-active">Active</span>
+              {% elif b.business_status == 'inactive' %}<span class="badge badge-inactive">Inactive</span>
+              {% elif b.business_status == 'dissolved' %}<span class="badge badge-dissolved">Dissolved</span>
+              {% else %}<span class="badge" style="background:rgba(139,143,163,.1);color:var(--text-muted);">{{ b.business_status }}</span>{% endif %}
             </td>
-            <td>{{ b.first_seen_at.strftime('%Y-%m-%d') if b.first_seen_at else '—' }}</td>
-            <td>{{ b.incorporation_date.strftime('%Y-%m-%d') if b.incorporation_date else '—' }}</td>
+            <td class="score-cell">
+              {{ b.quality_score|round(0)|int }}
+              {% if b.lead_ready %}<span class="badge badge-ready" style="margin-left:4px;">Ready</span>{% endif %}
+            </td>
+            <td>{{ b.first_seen_at.strftime('%b %d') if b.first_seen_at else '—' }}</td>
+            <td>
+              <button class="dnc-btn" onclick="openDNC('{{ b.id }}','{{ (b.legal_name or b.operating_name or '')|e }}')">DNC</button>
+            </td>
           </tr>
           {% endfor %}
+          {% if not businesses %}
+          <tr><td colspan="10" class="empty-state">No businesses match your filters. Try broadening your search.</td></tr>
+          {% endif %}
         </tbody>
       </table>
     </div>
+  </div>
 
-    <div class="sidebar">
-      <h2>Daily Leads Digest 🚀</h2>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <!-- Daily Digest -->
+    <div class="sidebar-card">
+      <h2>🚀 Today's Hot Leads</h2>
       {% if daily_digest %}
         {% for d in daily_digest %}
         <div class="digest-item">
           <div class="digest-name">{{ d.legal_name or d.operating_name }}</div>
           <div class="digest-meta">
-            {{ d.city or 'Unknown' }}, {{ d.province or 'Unknown' }} • Score: {{ d.quality_score|round(0) }}
+            📍 {{ d.city or 'Unknown' }}, {{ d.province or '' }}
+            • Score: <strong>{{ d.quality_score|round(0)|int }}</strong>
             {% if d.phone %}<br>📞 {{ d.phone }}{% endif %}
             {% if d.industry %}<br>🏢 {{ d.industry }}{% endif %}
-            {% if d.incorporation_date %}<br>📅 Registered: {{ d.incorporation_date.strftime('%Y-%m-%d') }}{% endif %}
           </div>
         </div>
         {% endfor %}
       {% else %}
-        <div class="digest-meta">No new leads today yet.</div>
+        <div class="empty-state">No new leads detected today yet.</div>
       {% endif %}
     </div>
-  </div>
 
-  <div class="jobs">
-    <strong>Recent pipeline runs:</strong>
-    <ul>
-      {% for j in recent_jobs %}
-      <li>{{ j.source_name }} — {{ j.status }} — collected {{ j.records_collected }}, new {{ j.records_new }}, updated {{ j.records_updated }}, errors {{ j.errors_count }} ({{ j.started_at }})</li>
-      {% endfor %}
-    </ul>
+    <!-- Pipeline Health -->
+    <div class="sidebar-card">
+      <h2>⚙️ Recent Pipeline Runs</h2>
+      <div class="jobs-grid">
+        {% for j in recent_jobs %}
+        <div class="job-row">
+          <div class="job-source">{{ j.source_name }}</div>
+          <span class="job-status {{ j.status }}">{{ j.status }}</span>
+          <div class="job-stats">
+            +{{ j.records_new }} new · {{ j.records_collected }} total
+            {% if j.errors_count > 0 %} · <span style="color:var(--accent-rose);">{{ j.errors_count }} err</span>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+        {% if not recent_jobs %}
+        <div class="empty-state">No pipeline runs recorded yet.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="sidebar-card">
+      <h2>📋 Quick Info</h2>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:1.8;">
+        <div>🔄 Collection interval: <strong>{{ config.COLLECT_INTERVAL_MINUTES }}min</strong></div>
+        <div>🔍 New-biz scan: <strong>{{ config.NEW_BUSINESS_SCAN_INTERVAL_MINUTES }}min</strong></div>
+        <div>♻️ Refresh interval: <strong>{{ config.REFRESH_INTERVAL_MINUTES }}min</strong></div>
+        <div style="margin-top:8px;">
+          <a href="/api/leads/new?window=today" style="color:var(--accent-indigo-light);font-size:11px;">API: New Leads →</a>
+        </div>
+      </div>
+    </div>
   </div>
+</div>
+
+<!-- ── Do-Not-Call Modal ── -->
+<div class="modal-overlay" id="dncModal">
+  <div class="modal">
+    <h3>🚫 Mark Do-Not-Call</h3>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;" id="dncBusinessName"></p>
+    <form method="POST" id="dncForm">
+      <input name="requested_by" placeholder="Your name / agent ID">
+      <textarea name="reason" rows="2" placeholder="Reason (e.g., 'Business requested no calls')">Requested by business</textarea>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeDNC()">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="background:var(--accent-rose);">Confirm DNC</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openDNC(id, name) {
+  document.getElementById('dncBusinessName').textContent = 'Business: ' + name;
+  document.getElementById('dncForm').action = '/business/' + id + '/do-not-call';
+  document.getElementById('dncModal').classList.add('active');
+}
+function closeDNC() {
+  document.getElementById('dncModal').classList.remove('active');
+}
+document.getElementById('dncModal').addEventListener('click', function(e) {
+  if (e.target === this) closeDNC();
+});
+</script>
+
 </body>
 </html>

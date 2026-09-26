@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ business.legal_name or business.operating_name }} — Canada B2B</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f1117; --bg-card: #1a1d27; --bg-input: #252836;
+      --border: #2d3044; --text-primary: #f1f3f9; --text-secondary: #8b8fa3;
+      --accent-indigo: #6366f1; --accent-indigo-light: #818cf8;
+      --accent-emerald: #10b981; --accent-amber: #f59e0b; --accent-rose: #f43f5e;
+      --gradient-brand: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+      --radius: 12px; --radius-sm: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text-primary); }
+    header {
+      background: linear-gradient(180deg, rgba(99,102,241,.15), transparent);
+      border-bottom: 1px solid var(--border); padding: 14px 28px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    header a { color: var(--accent-indigo-light); text-decoration: none; font-size: 13px; }
+    header h1 { font-size: 16px; font-weight: 700; }
+    .content { max-width: 1100px; margin: 24px auto; padding: 0 28px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+    @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+    }
+    .card h2 { font-size: 14px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .field-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid rgba(45,48,68,.4); font-size: 13px; }
+    .field-label { color: var(--text-secondary); min-width: 140px; }
+    .field-value { text-align: right; font-weight: 500; word-break: break-all; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-ready { background: rgba(16,185,129,.15); color: var(--accent-emerald); }
+    .badge-active { background: rgba(16,185,129,.12); color: var(--accent-emerald); }
+    .badge-dissolved { background: rgba(139,143,163,.12); color: var(--text-secondary); }
+    .score-big { font-size: 36px; font-weight: 700; color: var(--accent-indigo-light); }
+    .contact-card {
+      background: rgba(99,102,241,.05); border: 1px solid rgba(99,102,241,.15);
+      border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 10px;
+    }
+    .contact-name { font-weight: 600; font-size: 14px; }
+    .contact-meta { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 8px; color: var(--text-secondary); border-bottom: 1px solid var(--border); font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: .4px; }
+    td { padding: 8px; border-bottom: 1px solid rgba(45,48,68,.3); }
+    .current-pick { background: rgba(16,185,129,.08); }
+    .event-row { padding: 8px 0; border-bottom: 1px solid rgba(45,48,68,.3); font-size: 12px; }
+    .event-type { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; background: rgba(99,102,241,.15); color: var(--accent-indigo-light); }
+  </style>
+</head>
+<body>
+<header>
+  <a href="/">← Back to Dashboard</a>
+  <h1>{{ business.legal_name or business.operating_name or 'Unknown' }}</h1>
+</header>
+
+<div class="content">
+  <!-- Top: Identity + Score -->
+  <div class="grid-2">
+    <div class="card">
+      <h2>🏢 Business Identity</h2>
+      <div class="field-row"><span class="field-label">Legal Name</span><span class="field-value">{{ business.legal_name or '—' }}</span></div>
+      <div class="field-row"><span class="field-label">Operating Name</span><span class="field-value">{{ business.operating_name or '—' }}</span></div>
+      <div class="field-row"><span class="field-label">Corporation #</span><span class="field-value">{{ business.corporation_number or '—' }}</span></div>
+      <div class="field-row"><span class="field-label">Business #</span><span class="field-value">{{ business.business_number or '—' }}</span></div>
+      <div class="field-row"><span class="field-label">Status</span><span class="field-value">
+        {% if business.business_status == 'active' %}<span class="badge badge-active">Active</span>
+        {% else %}<span class="badge badge-dissolved">{{ business.business_status }}</span>{% endif %}
+      </span></div>
+      <div class="field-row"><span class="field-label">Incorporated</span><span class="field-value">{{ business.incorporation_date or '—' }}</span></div>
+      <div class="field-row"><span class="field-label">Industry</span><span class="field-value">{{ business.industry or '—' }}</span></div>
+      <div class="field-row"><span class="field-label">NAICS</span><span class="field-value">{{ business.naics_code or '—' }}</span></div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Score & Classification</h2>
+      <div style="text-align:center;margin:14px 0;">
+        <div class="score-big">{{ business.quality_score|round(0)|int }}</div>
+        <div style="font-size:12px;color:var(--text-secondary);">Quality Score (0-100)</div>
+        {% if business.lead_ready %}<div style="margin-top:8px;"><span class="badge badge-ready">Sales Ready ✓</span></div>{% endif %}
+      </div>
+      <div class="field-row"><span class="field-label">Employee Size</span><span class="field-value">{{ business.size_category or '—' }}</span></div>
+      <div class="field-row"><span class="field-label">Size Confidence</span><span class="field-value">{{ business.size_confidence or '—' }}</span></div>
+      <div class="field-row"><span class="field-label">Employee Range</span><span class="field-value">{% if business.employee_count_min %}{{ business.employee_count_min }}{% if business.employee_count_max %}-{{ business.employee_count_max }}{% endif %}{% else %}—{% endif %}</span></div>
+      <div class="field-row"><span class="field-label">Do Not Call</span><span class="field-value">{{ '🚫 Yes' if business.do_not_call else '✅ No' }}</span></div>
+      <div class="field-row"><span class="field-label">First Seen</span><span class="field-value">{{ business.first_seen_at.strftime('%Y-%m-%d %H:%M') if business.first_seen_at else '—' }}</span></div>
+      <div class="field-row"><span class="field-label">Last Verified</span><span class="field-value">{{ business.last_verified_at.strftime('%Y-%m-%d %H:%M') if business.last_verified_at else '—' }}</span></div>
+    </div>
+  </div>
+
+  <!-- Contact Info + Location -->
+  <div class="grid-2">
+    <div class="card">
+      <h2>📞 Contact Information</h2>
+      <div class="field-row"><span class="field-label">Phone</span><span class="field-value">{{ business.phone or '—' }}</span></div>
+      <div class="field-row"><span class="field-label">Email</span><span class="field-value">{{ business.email or '—' }}</span></div>
+      <div class="field-row"><span class="field-label">Website</span><span class="field-value">{% if business.website %}<a href="{{ business.website }}" target="_blank" style="color:var(--accent-indigo-light);">{{ business.domain or business.website }}</a>{% else %}—{% endif %}</span></div>
+    </div>
+    <div class="card">
+      <h2>📍 Location</h2>
+      <div class="field-row"><span class="field-label">Address</span><span class="field-value">{{ business.address_line1 or '—' }}</span></div>
+      <div class="field-row"><span class="field-label">City</span><span class="field-value">{{ business.city or '—' }}</span></div>
+      <div class="field-row"><span class="field-label">Province</span><span class="field-value">{{ business.province or '—' }}</span></div>
+      <div class="field-row"><span class="field-label">Postal Code</span><span class="field-value">{{ business.postal_code or '—' }}</span></div>
+    </div>
+  </div>
+
+  <!-- Decision-Makers -->
+  <div class="card" style="margin-bottom:18px;">
+    <h2>👤 Decision-Makers & Contacts ({{ contacts|length }})</h2>
+    {% if contacts %}
+      {% for c in contacts %}
+      <div class="contact-card">
+        <div class="contact-name">{{ c.full_name or c.title_raw }}</div>
+        <div class="contact-meta">
+          <strong>{{ c.title_raw }}</strong> · {{ c.role_category }}
+          {% if c.email %} · 📧 {{ c.email }}{% endif %}
+          {% if c.phone %} · 📞 {{ c.phone }}{% endif %}
+          · Source: <a href="{{ c.source_url }}" target="_blank" style="color:var(--accent-indigo-light);">{{ c.source_name }}</a>
+          · Confidence: {{ (c.confidence * 100)|round(0)|int }}%
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div style="color:var(--text-secondary);font-size:13px;padding:10px 0;">No decision-maker contacts found yet.</div>
+    {% endif %}
+  </div>
+
+  <!-- Source History -->
+  <div class="card" style="margin-bottom:18px;">
+    <h2>🔗 Source History ({{ field_sources|length }} records)</h2>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead><tr><th>Field</th><th>Value</th><th>Source</th><th>Kind</th><th>Confidence</th><th>Retrieved</th><th>Current?</th></tr></thead>
+        <tbody>
+          {% for fs in field_sources %}
+          <tr class="{% if fs.is_current_pick %}current-pick{% endif %}">
+            <td>{{ fs.field_name }}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">{{ fs.field_value }}</td>
+            <td>{{ fs.source_name }}</td>
+            <td>{{ fs.source_kind }}</td>
+            <td>{{ (fs.confidence * 100)|round(0)|int }}%</td>
+            <td>{{ fs.retrieved_at.strftime('%Y-%m-%d') if fs.retrieved_at else '—' }}</td>
+            <td>{% if fs.is_current_pick %}✅{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Events -->
+  <div class="card">
+    <h2>📋 Detection Events</h2>
+    {% if events %}
+      {% for e in events %}
+      <div class="event-row">
+        <span class="event-type">{{ e.event_type }}</span>
+        <span style="color:var(--text-secondary);margin-left:8px;">{{ e.detected_at.strftime('%Y-%m-%d %H:%M') if e.detected_at else '—' }}</span>
+        {% if e.detail %}<span style="color:var(--text-secondary);margin-left:8px;">{{ e.detail }}</span>{% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div style="color:var(--text-secondary);font-size:13px;padding:10px 0;">No detection events.</div>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>

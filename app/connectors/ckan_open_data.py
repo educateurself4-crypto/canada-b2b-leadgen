@@ -203,5 +203,66 @@ SOURCE_REGISTRY = [
             "industry": ["type_usage", "categorie", "category"],
         },
     ),
+    # --- Additional CKAN sources for broader Canada coverage ---
+    CkanSourceConfig(
+        key="ottawa_business_licences",
+        base_url="https://open.ottawa.ca",
+        dataset_id="business-licences",  # verify on portal
+        province="ON",
+        field_map={
+            "legal_name": ["business name", "company name", "licensee"],
+            "operating_name": ["trade name", "operating as"],
+            "address_line1": ["address", "street address", "location"],
+            "city": ["ward", "city"],
+            "industry": ["licence type", "business type", "category"],
+            "incorporation_date": ["issue date", "date issued"],
+            "business_status": ["status"],
+        },
+    ),
+    CkanSourceConfig(
+        key="halifax_business_registrations",
+        base_url="https://catalogue.hrm.opendata.arcgis.com",
+        dataset_id="business-licenses",  # verify on portal
+        province="NS",
+        field_map={
+            "legal_name": ["business_name", "company", "name"],
+            "operating_name": ["trade name", "operating name"],
+            "address_line1": ["address", "location", "civic_address"],
+            "city": ["community", "district"],
+            "industry": ["category", "business type", "type"],
+            "incorporation_date": ["date_issued", "start date"],
+            "business_status": ["status"],
+        },
+    ),
+    CkanSourceConfig(
+        key="brampton_business_directory",
+        base_url="https://geohub.brampton.ca",
+        dataset_id="business-directory",  # verify on portal
+        province="ON",
+        field_map={
+            "legal_name": ["business_name", "company_name", "name"],
+            "operating_name": ["trade_name", "dba"],
+            "address_line1": ["address", "street_address"],
+            "industry": ["business_type", "category", "naics_description"],
+            "naics_code": ["naics", "naics_code"],
+        },
+    ),
+    CkanSourceConfig(
+        key="manitoba_business_listings",
+        base_url="https://geoportal.gov.mb.ca",
+        dataset_id="business-listings",  # verify on portal
+        province="MB",
+        source_kind="provincial_registry",
+        field_map={
+            "legal_name": ["business name", "company name", "legal name"],
+            "operating_name": ["operating name", "dba", "trade name"],
+            "address_line1": ["address", "location", "street address"],
+            "city": ["city", "municipality", "community"],
+            "postal_code": ["postal code", "postal_code"],
+            "industry": ["industry", "business type", "sector"],
+            "incorporation_date": ["date registered", "registration date"],
+            "business_status": ["status"],
+        },
+    ),
 ]
 

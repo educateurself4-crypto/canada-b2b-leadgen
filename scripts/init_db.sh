@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
-# Initializes the database schema. Docker Compose already does this
-# automatically on first boot (via db/schema.sql mounted into
-# /docker-entrypoint-initdb.d/), but this script is here for manual
-# re-runs / non-Docker Postgres installs.
-set -euo pipefail
-: "${DATABASE_URL:?Set DATABASE_URL, e.g. postgresql://leadgen:changeme@localhost:5432/leadgen}"
-psql "$DATABASE_URL" -f "$(dirname "$0")/../db/schema.sql"
-echo "Schema applied."
+# Initialize the database schema manually (useful if not using docker-entrypoint)
+# Usage: bash scripts/init_db.sh
+set -e
+
+DB_HOST="${DB_HOST:-localhost}"
+DB_PORT="${DB_PORT:-5432}"
+DB_NAME="${POSTGRES_DB:-leadgen}"
+DB_USER="${POSTGRES_USER:-leadgen}"
+
+echo "=== Initializing database schema ==="
+echo "Host: $DB_HOST:$DB_PORT  Database: $DB_NAME  User: $DB_USER"
+
+PGPASSWORD="${POSTGRES_PASSWORD:-changeme}" psql \
+    -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+    -f db/schema.sql
+
+echo "=== Schema initialized successfully ==="

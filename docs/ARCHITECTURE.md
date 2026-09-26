@@ -1,95 +1,160 @@
 # Architecture
 
-## Pipeline shape
+## System Overview
+
+The Canada B2B Business Data Automation System is a self-hosted pipeline that:
+1. **Collects** business data from 15+ Canadian government open-data sources
+2. **Normalizes** all data into consistent formats (phone→E.164, postal codes, provinces)
+3. **Deduplicates** using 5-key matching (corp#, domain, phone, postal+name, fuzzy)
+4. **Stores** with full source history (never blind-overwrites)
+5. **Enriches** with decision-maker contacts from business websites and federal API
+6. **Classifies** employee size into 9 standard buckets
+7. **Detects** new businesses daily (today/7d/30d + change tracking)
+8. **Scores** lead quality on a transparent 0-100 checklist
+9. **Serves** via a premium dark-theme dashboard with API endpoints
+
+## Pipeline Flow
 
 ```
- Connector.fetch()          one per source, yields RawBusinessRecord
-        |
- normalize.normalize_record()   clean/standardize (phone->E.164, province
-        |                        codes, postal code format, domain extraction)
- dedup.find_existing_business()  exact-key lookup first (corp #, domain,
-        |                        phone, postal+name), fuzzy name fallback
-        v
- storage.insert_business() / update_business()
-        |                        never blind-overwrites; every field write
-        |                        also logged to business_field_sources with
-        |                        its own confidence + provenance
-        v
- employee_classifier.classify()   buckets into the 9 required size ranges,
-        |                          labels estimated vs confirmed
-        v
- new_business_detector.record_events()  writes new_today/7d/30d or
-        |                                recently_changed rows
-        v
- enrichment.WebsiteContactEnrichment    (batched, separate pass) pulls
-        |                               decision-maker contacts from the
-        |                               business's own public site only
-        v
- scoring.score_business()          recomputes quality_score + lead_ready
-        |
- job_runs logging                  every run recorded: source, counts,
-                                    errors, timestamps
+┌──────────────────────────────────────────────────────────────────┐
+│ CONNECTORS (one per source, yields RawBusinessRecord)           │
+│                                                                  │
+│ FederalCorporationsCanadaConnector    ─── Bulk CSV (640k+ corps) │
+│ FederalCorpAPIEnrichment             ─── Per-corp API (directors)│
+│ BCOrgBookConnector                    ─── BC API (500k+ orgs)    │
+│ CkanOpenDataConnector × 10           ─── CKAN portals            │
+│ SocrataOpenDataConnector × 3         ─── Socrata portals         │
+│ OpendatasoftConnector × 1            ─── Vancouver               │
+│ YellowPagesConnector                 ─── Directory scraper       │
+│ WebsiteContactEnrichment             ─── Company websites        │
+└──────────────┬───────────────────────────────────────────────────┘
+               │ RawBusinessRecord (generator, streams)
+               ▼
+┌──────────────────────────────────────────────────────────────────┐
+│ ORCHESTRATOR (app/pipeline/orchestrator.py)                      │
+│                                                                  │
+│ 1. normalize.normalize_record()                                  │
+│    ├── Phone → E.164                                             │
+│    ├── Province → 2-letter code                                  │
+│    ├── Postal code → X9X 9X9                                    │
+│    └── Domain extracted from website URL                        │
+│                                                                  │
+│ 2. dedup.find_existing_business()                               │
+│    ├── Exact: corp_number → business_id                         │
+│    ├── Exact: domain → business_id                              │
+│    ├── Exact: phone → business_id                               │
+│    ├── Exact: postal+name hash → business_id                    │
+│    └── Fuzzy: token_sort_ratio ≥ 87 (same city/province)       │
+│                                                                  │
+│ 3. storage.upsert_business()                                    │
+│    ├── New? → INSERT + register dedup identifiers               │
+│    └── Existing? → MERGE (higher confidence wins per field)     │
+│        └── Every field write → business_field_sources (audit)   │
+│                                                                  │
+│ 4. employee_classifier.classify()                               │
+│    ├── Exact count → "confirmed" bucket                         │
+│    ├── Min/max range → midpoint → "estimated" bucket            │
+│    └── No signal → NULL (honest, never fabricated)              │
+│                                                                  │
+│ 5. new_business_detector.record_events()                        │
+│    ├── is_new → new_today event                                 │
+│    ├── incorporation_date ≤ 7d → new_7d event                  │
+│    ├── incorporation_date ≤ 30d → new_30d event                │
+│    └── changed_fields → recently_changed event                  │
+│                                                                  │
+│ 6. scoring.score_business()                                     │
+│    ├── has_verified_phone: 20 pts                               │
+│    ├── has_website: 10 pts                                      │
+│    ├── has_verified_address: 15 pts                             │
+│    ├── has_employee_info: 10 pts                                │
+│    ├── has_decision_maker: 20 pts                               │
+│    ├── recently_verified: 10 pts                                │
+│    └── multiple_sources: 15 pts                                 │
+│    Score ≥ 50 → lead_ready = TRUE                              │
+│                                                                  │
+│ 7. job_runs logging                                             │
+│    └── source, status, counts, errors, timestamps              │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-All of this is orchestrated by `app/pipeline/orchestrator.py::run_connector`,
-which any connector — present or future — plugs into identically. Adding a
-source never means writing new dedup/scoring/classification logic; it only
-means writing (or configuring) something that yields `RawBusinessRecord`s.
+## Database Schema
 
-## Why Postgres + raw SQL instead of an ORM
+```
+businesses          ── One canonical row per real-world company (post-dedup)
+  ├── Core identity:  legal_name, operating_name, corp_number, BN9
+  ├── Location:       province, city, address, postal_code
+  ├── Contact:        phone (E.164), email, website, domain
+  ├── Classification: industry, naics_code, size_category, size_confidence
+  ├── Metadata:       quality_score, lead_ready, do_not_call
+  └── Timestamps:     first_seen_at, last_verified_at, last_updated_at
 
-The schema is stable and the team evaluating this is explicitly judging
-code quality and the ability for others to extend it — plain, readable SQL
-in `db/schema.sql` plus small parameterized queries is easier to audit,
-diff, and hand off than an ORM abstraction layer for a project this size.
-If the system grows substantially, introducing SQLAlchemy Core (not
-necessarily the full ORM) is a reasonable next step without touching the
-schema.
+business_field_sources  ── Every field value ever seen, per source
+  └── Never blindly overwritten; highest-confidence source "wins"
 
-## Why CKAN as the scaling mechanism for provincial/local sources
+business_identifiers    ── Normalized dedup keys (corp#, domain, phone, etc.)
+  └── Used for O(1) exact-match dedup lookups
 
-Task requirement: "multiple provincial/local sources" and "a real
-framework capable of expanding across all of Canada," not a demo tied to
-one city. Most Canadian federal/provincial/municipal open-data portals run
-the same open-source platform (CKAN) with the same REST API shape
-(`/api/3/action/package_show`). Writing one generic, configurable
-`CkanOpenDataConnector` and a `SOURCE_REGISTRY` list means every new
-CKAN-based portal (there are dozens across Canada) is a ~5-line config
-addition, not a new scraper. Non-CKAN sources (e.g. a province that only
-publishes a proprietary registry search UI) get their own connector
-subclassing `BaseConnector`, same as the federal one.
+contacts                ── Decision-makers / staff contacts
+  └── One-to-many with businesses; tagged by role category
 
-## Why source-history instead of overwrite-in-place
+new_business_events     ── Append-only feed for dashboards/CRM
+  └── new_today | new_7d | new_30d | recently_changed | new_location
 
-The client requirement is explicit: "Do not simply overwrite conflicting
-information. Keep source history." `business_field_sources` stores every
-value we've ever seen for every field, tagged by source and confidence;
-`businesses` always reflects the currently-highest-confidence pick per
-field. This means:
-  * We can always explain why a phone number or address is what it is.
-  * A bad/stale source doesn't silently corrupt a good record — it just
-    loses the "current pick" comparison.
-  * Multiple-source confirmation (used in the quality score) is a simple
-    `COUNT(DISTINCT source_name)` query.
+job_runs                ── Pipeline observability
+  └── Per-source, per-run: collected, new, updated, errors
 
-## Why the quality score is a transparent checklist, not a model
+do_not_call_requests    ── Audit trail for DNC suppressions
+```
 
-The call-centre team needs to trust and act on scores quickly. A weighted
-checklist (`app/pipeline/scoring.py`) is auditable, tunable per business
-priority (e.g. raise the weight on "decision-maker found" if that matters
-more than "recently verified"), and needs no training data or ML
-infrastructure — consistent with the $0-recurring-cost requirement.
+## Why Postgres + Raw SQL (not an ORM)
 
-## Scaling from trial to production
+The schema is stable and the team evaluating this is judging code quality and
+extensibility. Plain parameterized SQL in small functions is easier to audit,
+diff, and hand off than an ORM abstraction for a project this size.
 
-1. Add more `CkanSourceConfig` entries (Alberta, BC, Vancouver, Calgary,
-   Winnipeg, etc. — see `docs/ADDING_SOURCES.md`).
-2. Add provincial corporate-registry connectors for provinces with their
-   own non-CKAN system (e.g. BC's OrgBook, Ontario's Business Registry) —
-   each is a `BaseConnector` subclass, same pattern as the federal one.
-3. Increase `enrich_recent_websites` batch size / run it as its own
-   scheduled job once the businesses table is large, so enrichment doesn't
-   compete with collection for time.
-4. Move from the bundled Flask dev server to gunicorn + a reverse proxy
-   (nginx/Caddy) for the dashboard once it's exposed beyond localhost/VPN.
-5. Add a read-only Postgres role for CRM/dialer integration (see README).
+## Why Config-Driven Connectors
+
+The task requires "multiple provincial/local sources" and "a real framework
+capable of expanding across all of Canada." CKAN, Socrata, and Opendatasoft
+each use standardized APIs across all their portals. One generic connector +
+a registry list means adding a new city/province is a ~5-line config entry.
+
+## Why Source-History (not overwrite-in-place)
+
+The requirement is explicit: "Do not simply overwrite conflicting information."
+`business_field_sources` stores every value from every source with its confidence.
+The `businesses` table reflects the highest-confidence pick per field. This means:
+- We can always explain why a field has its current value
+- A bad source doesn't corrupt a good record
+- Multi-source confirmation is a simple COUNT query
+
+## Scheduling Architecture
+
+```
+APScheduler (single Python process in scheduler container)
+├── Collection jobs (every COLLECT_INTERVAL_MINUTES = 360 min default)
+│   ├── Federal CSV
+│   ├── BC OrgBook
+│   ├── All CKAN sources
+│   ├── All Socrata sources
+│   └── All Opendatasoft sources
+├── New-business detection (every NEW_BUSINESS_SCAN_INTERVAL_MINUTES = 60 min)
+│   └── BC OrgBook date-filtered scan
+├── Enrichment jobs (staggered after collection)
+│   ├── Federal Corp API director lookup
+│   └── Website contact extraction
+├── Refresh (every REFRESH_INTERVAL_MINUTES = 1440 min = daily)
+│   └── Re-verify and re-score stale records
+└── Supplementary (weekly)
+    └── YellowPages directory scrape
+```
+
+## Scaling Path
+
+1. Add more `SOURCE_REGISTRY` configs (see `docs/ADDING_SOURCES.md`)
+2. Add provincial registry connectors (Ontario, BC beyond OrgBook, Quebec REQ)
+3. Increase enrichment batch sizes as database grows
+4. Switch dashboard to gunicorn + nginx for production traffic ✅ (done)
+5. Add read-only Postgres role for CRM/dialer direct integration
+6. Consider PgBouncer for connection pooling at scale
+7. Optional: add Celery for parallel source collection

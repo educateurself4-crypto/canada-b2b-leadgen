@@ -116,13 +116,24 @@ class OpendatasoftConnector(BaseConnector):
                 industry=get("industry"),
                 naics_code=get("naics_code"),
                 incorporation_date=get("incorporation_date"),
-                business_status=get("business_status"),
+                business_status=self._normalize_status(get("business_status")),
                 source_name=self.cfg.key,
                 source_kind=self.cfg.source_kind,
                 source_url=f"{self.cfg.base_url}/explore/dataset/{self.cfg.dataset_id}/",
                 confidence=0.7,
             )
 
+    def _normalize_status(self, raw_status: str) -> str:
+        if not raw_status:
+            return None
+        s = raw_status.lower()
+        if s in ("active", "issued", "valid", "open", "registered"):
+            return "active"
+        if s in ("inactive", "closed", "cancelled", "expired", "suspended"):
+            return "inactive"
+        if s in ("dissolved",):
+            return "dissolved"
+        return "unknown"
 
 # ---------------------------------------------------------------------------
 # SOURCE REGISTRY — add a new Opendatasoft-based source by adding one entry.

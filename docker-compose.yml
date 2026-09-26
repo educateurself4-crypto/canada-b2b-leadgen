@@ -41,7 +41,7 @@ services:
       dockerfile: Dockerfile
     container_name: leadgen_dashboard
     restart: unless-stopped
-    command: ["python", "-m", "app.dashboard.app"]
+    command: ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "120", "app.dashboard.app:app"]
     env_file: .env
     ports:
       - "8080:8080"
@@ -52,23 +52,5 @@ services:
       - ./app:/app/app
       - ./exports:/app/exports
 
-  n8n:
-    image: docker.n8n.io/n8nio/n8n
-    container_name: leadgen_n8n
-    restart: unless-stopped
-    ports:
-      - "5678:5678"
-    environment:
-      - N8N_HOST=0.0.0.0
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - NODE_ENV=production
-      - WEBHOOK_URL=http://localhost:5678/
-    env_file: .env
-    volumes:
-      - n8n_data:/home/node/.n8n
-      - ./n8n/workflows:/data/workflows
-
 volumes:
   pgdata:
-  n8n_data:

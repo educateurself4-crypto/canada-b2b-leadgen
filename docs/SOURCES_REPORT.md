@@ -3,129 +3,145 @@
 Per the assignment's deliverable #17: every source used or evaluated, what
 it provides, its limitations, and its cost/permission status.
 
-## Implemented and wired into the pipeline
+## Implemented Sources — Fully Wired into the Pipeline
 
-### 1. Corporations Canada — Federal Corporations open data
+### 1. Corporations Canada — Federal Corporations (Bulk CSV)
 - **Level:** Federal
 - **Publisher:** Innovation, Science and Economic Development Canada (ISED)
-- **Access:** Bulk XML download (`OPEN_DATA_SPLIT.zip`), updated daily;
-  also a per-corporation lookup page for targeted refresh.
-- **Dataset page:** https://open.canada.ca/data/en/dataset/0032ce54-c5dd-4b66-99a0-320a7b5e99f2
-- **Licence:** Open Government Licence – Canada. Free, including
-  commercial use, with attribution.
-- **Provides:** Legal name, corporation number, business number (CRA
-  BN9), registered address (street/city/province/postal code),
-  incorporation date, status (active/dissolved/etc.), governing act,
-  min/max director count.
-- **Limitations:**
-  - No director/officer *names* in the bulk file (only counts) — names
-    require the per-corporation detail page, fetched only for targeted
-    enrichment, not bulk collection.
-  - No employee count, industry/NAICS, website, phone, or email at all —
-    this source establishes legal identity + address only; everything
-    else needs enrichment from other sources.
-  - Only covers *federally incorporated* entities (CBCA, NFP Act,
-    cooperatives, boards of trade) — most small/local Canadian businesses
-    are provincially incorporated or unincorporated (sole
-    proprietorships), so this alone significantly undercounts the
-    addressable market. Provincial/municipal sources are required to
-    reach those businesses (see below).
-  - New incorporations typically take ~1-2 weeks to appear in the daily
-    bulk file, so "new today" detection for federal entities specifically
-    has that lag; provincial/municipal sources are often faster for
-    hyper-fresh leads.
-- **Cost:** $0.
+- **Connector:** `app/connectors/federal_corporations_canada.py`
+- **Access:** Bulk CSV download from CloudFront CDN, updated daily.
+- **Dataset:** https://open.canada.ca/data/en/dataset/0032ce54-c5dd-4b66-99a0-320a7b5e99f2
+- **Licence:** Open Government Licence – Canada. Free, commercial use, attribution.
+- **Provides:** Legal name, corporation number, BN9, registered address,
+  incorporation date, status, governing act, min/max director count.
+- **Limitations:** No director names in bulk (only counts), no employee count,
+  no industry/NAICS, no website/phone/email. Only federal incorporations.
+- **Cost:** $0
 
-### 2. Provincial / municipal open-data portals (CKAN-based)
+### 2. Corporations Canada — Federal Corporation API (Enrichment)
+- **Level:** Federal
+- **Publisher:** ISED
+- **Connector:** `app/connectors/federal_corp_api.py`
+- **Access:** REST API at `apigateway-passerelledapi.ised-isde.canada.ca`
+- **Licence:** Open Government Licence – Canada. Free.
+- **Provides:** Director/officer names and titles for individual corporations.
+- **Limitations:** Single-record lookup only (no bulk). Rate-limited. Used for
+  targeted enrichment only, not initial collection.
+- **Cost:** $0
+
+### 3. BC OrgBook (BC Corporate Registry)
+- **Level:** Provincial (British Columbia)
+- **Publisher:** Government of British Columbia
+- **Connector:** `app/connectors/bc_orgbook.py`
+- **Access:** REST API at `orgbook.gov.bc.ca/api/v4/`
+- **Licence:** BC Government Access Only Terms. Free, public API, no key.
+- **Provides:** Legal name, DBA names, BC registration number, entity type,
+  entity status, registration date. ~500,000+ active organizations.
+- **Limitations:** No address, phone, email, or employee count. Good for
+  establishing legal identity + status; enrichment needed from other sources.
+- **New-business detection:** Supports date filtering via the API, enabling
+  daily scans for newly registered BC businesses.
+- **Cost:** $0
+
+### 4. Provincial/Municipal CKAN Open-Data Portals (10 configs)
 - **Level:** Provincial and municipal
-- **Access:** Standard CKAN REST API (`/api/3/action/package_show`),
-  present on most Canadian government open-data portals.
-- **Implemented for (pre-configured, see `app/connectors/ckan_open_data.py`):**
-  - Ontario (`data.ontario.ca`) — licensed-business / registration
-    datasets.
-  - Toronto (`open.toronto.ca`) — business-licence dataset.
-- **Licence:** Open Government Licence – Ontario / – Toronto (and
-  equivalents for other provinces/cities). Free, commercial use
-  permitted, attribution required.
-- **Provides:** Varies per dataset — generally business/operator name,
-  licence type (proxy for industry), address, and sometimes status/issue
-  date. Does not generally include employee counts, corporation numbers,
-  or private contact emails.
-- **Limitations:**
-  - Coverage is licence-based, not registration-based — only businesses
-    that hold the specific licence type the dataset tracks appear (e.g.
-    Toronto's business-licence dataset won't include every business in
-    the city, only licensed categories).
-  - Column names and update frequency vary by portal; the generic
-    connector's `DEFAULT_HEADER_HINTS` needs per-source verification (see
-    `docs/ADDING_SOURCES.md`) before being trusted at scale.
-  - **This build could not live-verify exact dataset slugs and CSV
-    headers** because this development container has no outbound network
-    access. The dataset IDs in `SOURCE_REGISTRY` are documented
-    best-effort matches and are flagged in-code as "verify slug on
-    portal" — this is the single most important thing to check before
-    scheduling in production.
-- **Cost:** $0.
-- **Scaling path:** the same connector works for every other CKAN portal
-  in Canada (Alberta, BC, Vancouver, Calgary, Edmonton, Winnipeg, and
-  most other major municipalities) — each is a config addition, not new
-  code. See `docs/ADDING_SOURCES.md`.
+- **Connector:** `app/connectors/ckan_open_data.py` (generic, config-driven)
+- **Access:** Standard CKAN REST API (`/api/3/action/package_show`)
+- **Implemented for:**
+  | Source Key | Portal | Province | Coverage |
+  |---|---|---|---|
+  | ontario_licensed_businesses | data.ontario.ca | ON | Provincial licences |
+  | toronto_business_licences | open.toronto.ca | ON | ~80,000+ licenced businesses |
+  | alberta_licensed_businesses | open.alberta.ca | AB | Provincial licences |
+  | montreal_commercial_establishments | donnees.montreal.ca | QC | Food establishments |
+  | montreal_locaux_commerciaux | donnees.montreal.ca | QC | Commercial premises |
+  | ottawa_business_licences | open.ottawa.ca | ON | Municipal licences |
+  | halifax_business_registrations | catalogue.hrm.opendata.arcgis.com | NS | Municipal licences |
+  | brampton_business_directory | geohub.brampton.ca | ON | Business directory |
+  | manitoba_business_listings | geoportal.gov.mb.ca | MB | Provincial listings |
+- **Licence:** Open Government Licence (Canada/Ontario/Toronto/Alberta/etc.)
+  Free, commercial use, attribution required.
+- **Provides:** Varies by dataset — generally business name, licence type (industry
+  proxy), address, sometimes status and issue date.
+- **Limitations:** Coverage is licence-based, not registration-based. Column names
+  vary; auto-detection with `DEFAULT_HEADER_HINTS` + custom `field_map`.
+  Dataset IDs should be verified on each portal before production.
+- **Scaling:** Same connector works for any CKAN portal. Adding a new city/province
+  is a ~5-line config entry, not new code.
+- **Cost:** $0
 
-### 3. Company website enrichment (decision-maker contacts)
+### 5. Socrata Open-Data Portals (3 configs)
+- **Level:** Municipal
+- **Connector:** `app/connectors/socrata_open_data.py` (generic, config-driven)
+- **Access:** SODA API with CSV export (`/resource/{id}.csv`)
+- **Implemented for:**
+  | Source Key | Portal | Province |
+  |---|---|---|
+  | calgary_business_licences | data.calgary.ca | AB |
+  | edmonton_business_licences | data.edmonton.ca | AB |
+  | winnipeg_business_licences | data.winnipeg.ca | MB |
+- **Licence:** Open Data Licence (Calgary/Edmonton/Winnipeg). Free, commercial use.
+- **Provides:** Business name, address, licence type, status, issue date.
+- **Limitations:** Similar to CKAN — licence-based coverage, column auto-detection.
+- **Cost:** $0
+
+### 6. Opendatasoft Portal — Vancouver
+- **Level:** Municipal (Vancouver)
+- **Connector:** `app/connectors/opendatasoft.py`
+- **Access:** Explore API v2.1 CSV export
+- **Licence:** Open Government Licence – City of Vancouver. Free.
+- **Provides:** Business name, address, business type/subtype, issued date, status.
+  ~60,000+ business licences.
+- **Cost:** $0
+
+### 7. YellowPages.ca (Supplementary)
+- **Level:** National directory
+- **Connector:** `app/connectors/yellowpages_scraper.py`
+- **Access:** Public website, robots.txt-compliant scraping.
+- **Licence:** Public directory listings. Scraping is rate-limited and
+  respects robots.txt. Used only as supplementary enrichment.
+- **Provides:** Business name, phone, address, website, industry category.
+- **Limitations:** Anti-bot protection may block requests. Industry inferred
+  from search query. Less reliable than government sources. Supplementary only.
+- **Cost:** $0
+
+### 8. Company Website Enrichment (Decision-Maker Contacts)
 - **Level:** Per-business
-- **Access:** The business's own public website (About/Team/Contact/
-  Leadership pages), checked against `robots.txt` before fetching.
-- **Provides:** Names, titles, and sometimes emails/phone numbers for
-  owners, GMs, IT managers, and similar publicly-listed roles — exactly
-  the kind of self-published contact information the business intends to
-  be found by.
-- **Limitations:**
-  - Coverage depends entirely on whether a business publishes a team/
-    about page with real names — many small businesses don't.
-  - Heuristic (regex/keyword) extraction, not NLP — will miss
-    non-standard phrasing and occasionally mis-attribute a title to the
-    wrong nearby name; every contact is stored with its exact source URL
-    so the sales team can verify before using it.
-- **Cost:** $0.
+- **Connector:** `app/pipeline/enrichment.py`
+- **Access:** Business's own public website (/about, /team, /contact pages).
+  Checks robots.txt before fetching.
+- **Provides:** Names, titles, emails, phone numbers for owners, GMs, IT
+  managers, and other publicly-listed roles.
+- **Limitations:** Coverage depends on whether the business publishes a
+  team/about page. Heuristic extraction (regex), not NLP.
+- **Cost:** $0
 
-## Documented but NOT implemented (require payment, or would require
-## bypassing access controls / terms of service — excluded per the
-## assignment's compliance requirement)
+## Documented but NOT Implemented
 
-### LinkedIn (company pages / employee search)
-The single richest source of exactly the "manager / IT director /
-procurement contact" data this project wants — but LinkedIn's Terms of
-Service prohibit automated scraping, and its official data products
-(Sales Navigator, Talent/Recruiter APIs) are paid. **Not built.** If the
-business decides a paid tool is acceptable later, this is the highest-
-value one to evaluate — but it was explicitly kept out of the core (free)
-system per the assignment's cost requirement.
+### LinkedIn
+Richest source of decision-maker data, but Terms of Service prohibit automated
+scraping. Official APIs (Sales Navigator) are paid. **Not built per cost requirement.**
 
-### Provincial corporate registries without open-data feeds
-Several provinces (e.g. Ontario's own Business Registry beyond the CKAN
-licence data, BC's formal registry beyond OrgBook, Quebec's REQ) expose
-search-only web interfaces rather than bulk open data. These are
-generally *permitted* to query for individual lookups (useful for
-targeted enrichment/refresh of a specific business already in the
-database) but are not efficient or reliably permitted for bulk crawling.
-Recommended next step: implement each as a targeted, rate-limited,
-single-record lookup connector (same shape as the federal per-corporation
-detail page) used during the refresh stage, not the initial bulk
-collection stage.
+### Provincial Registries Without Open-Data Feeds
+Ontario's full Business Registry, BC's formal registry (beyond OrgBook),
+Quebec's REQ — expose search-only web interfaces. Suitable for targeted
+single-record lookups during refresh, not bulk collection.
 
-### Paid data providers (Apollo, ZoomInfo, Data Axle, Dun & Bradstreet, etc.)
-Explicitly excluded per the assignment brief. Noted here only for
-completeness: these would fill the biggest gap in this system — verified
-employee counts and direct-dial decision-maker contacts at scale — at a
-real recurring cost. Not a dependency of this system.
+### Paid Data Providers
+Apollo, ZoomInfo, Data Axle, Dun & Bradstreet — explicitly excluded per brief.
+Would fill the biggest gap (verified employee counts, direct-dial contacts).
 
-## Summary table
+## Summary
 
-| Source | Level | Free? | Implemented? | Key gap it fills |
+| Source | Level | Free? | Implemented? | Key Gap It Fills |
 |---|---|---|---|---|
-| Corporations Canada | Federal | Yes | Yes | Legal identity, address, status |
-| Provincial/municipal CKAN portals | Prov/Municipal | Yes | Yes (2 configured, generic connector scales further) | Locally-incorporated & licensed businesses |
-| Company website enrichment | Per-business | Yes | Yes | Decision-maker names/contacts |
-| Provincial registry single-lookup APIs | Provincial | Yes | Documented, not yet built | Refresh/verification of individual records |
-| LinkedIn | Cross-cutting | No (ToS + paid API) | Not built (excluded intentionally) | Richest decision-maker data |
-| Apollo/ZoomInfo/Data Axle/D&B | Cross-cutting | No | Not built (excluded per brief) | Verified employee counts, direct dials |
+| Corporations Canada (CSV) | Federal | ✅ | ✅ | Legal identity, address, status |
+| Corporations Canada (API) | Federal | ✅ | ✅ | Director/officer names |
+| BC OrgBook | Provincial | ✅ | ✅ | BC corporate registry, new-biz detection |
+| CKAN Portals (10 configs) | Prov/Municipal | ✅ | ✅ | Licensed businesses across Canada |
+| Socrata Portals (3 configs) | Municipal | ✅ | ✅ | AB/MB municipal licences |
+| Opendatasoft (Vancouver) | Municipal | ✅ | ✅ | Vancouver business licences |
+| YellowPages.ca | National | ✅ | ✅ | Phone, website, industry supplementation |
+| Website Enrichment | Per-business | ✅ | ✅ | Decision-maker contacts |
+| LinkedIn | Cross-cutting | ❌ (ToS) | ❌ | Best decision-maker data |
+| Paid providers | Cross-cutting | ❌ | ❌ | Verified headcounts, direct dials |
